@@ -1,0 +1,554 @@
+/*
+ *
+ * Cold Collective common module Gradle build script.
+ * This script can and will be used across all projects.
+ *
+ * Can be included into any module.
+ *
+ * By Orbyfied 2023
+ *
+ */
+
+/*
+    Documentation:
+
+    1. Properties
+    Properties are resolved through a searching process,
+    starting from the current project, following the parents
+    down to the root project.
+
+    1.1. List of properties
+    # Paper
+    - hasPaper:
+       If the module should enable Paperweight Userdev for Minecraft server development.
+       Default: false
+    - paperVersion:
+       The version of Paper to install.
+       Default: null
+    - defaultPaperVersion:
+       The default Paper version if the property is not set.
+       Default: null
+    # Tests
+    - hasTesting:
+       Enables JUnit testing on the current module if true.
+       Default: false
+    # Compilation
+    - languageVersion:
+       The language version you want to use on the module.
+       Default: 17
+    - releaseVersion:
+       The JRE/JDK version you want to use on the module.
+       Default: 17
+    - encoding:
+       The encoding to set for the compiler.
+       Default: UTF-8
+    # Application
+    - isApplication:
+       If this module is an application and should there for
+       be configured as one (main class, etc.)
+       Default: false
+    - mainClassName:
+       The fully qualified main class name.
+       Only used if isApplication is true.
+    # Output File
+    - outFileFormat:
+       The format for the output file name.
+       Default: %{name}-%{version}%{'+'paperVersion}.jar
+    - outDirFormat:
+       The format for the output directory name.
+       Default: %{buildDir}/libs/
+    # Publishing
+    - projectUrl:
+       The URL to your project.
+    - scmBaseUrl:
+       The base URL to your SCM (without protocol)
+       Example: github.com/cold-collective/gradle-scripts.git
+    - licenses:
+       A list of strings, each string describing a license with
+       the format <name>;<url>
+       Example: new ... { "Apache License 2.0;https://www.apache.org/licenses/LICENSE-2.0" }
+    - developers:
+       A list of strings, each string describing a developer
+       on this project with the format "<id>;<name>"
+       Example: new ... { "orbyfied;orbyfied" }
+    - desc:
+       A description of the module.
+
+    2. Derived properties
+    Some properties (enable publishing, enable shadowJar) are
+    derived from the project state, in this case, if the "publish" and
+    "com.[...].shadow" plugins are enabled respectively.
+
+    2.1. List of derived properties
+    - Plugins Present (maven-publish and signing)
+       Enables publishing on this module.
+    - Plugin Present (java-library)
+       Configures the aspects of the plugin according to set properties.
+
+    3. Publishing Requirements
+    To allow correct publishing of your artifacts to the Sonatype OSS repository
+    (currently the only support repository), you will need a gradle.properties file
+    in the root project directory, describing a multitude of secret factors in publishing.
+    For the correct format, refer to: https://gist.github.com/orbyfied/7f93cfb91eea84e168769571413a798c
+
+    4. Placeholder Format
+    One function is used to handle all placeholder replacement
+    in the script, which is 'replacePlaceholders(String, Map) -> String'.
+    The format of this function is as follows:
+      1. Literals can be escaped with a \
+      2. Placeholders follow the form of "%{['prefix']name['suffix']"
+         Where prefix and suffix are optional literals appended to the
+         result string if the value is present.
+
+ */
+
+import java.nio.charset.StandardCharsets
+import java.nio.file.Files
+import java.nio.file.Path
+import java.nio.file.StandardOpenOption
+
+/* Function Declarations */
+
+/**
+ * Get a property on this module. This will
+ * first attempt to get it on this project,
+ * following the parent chain while it can't
+ * find it set. If no property is ever found,
+ * the default value is returned.
+ *
+ * @param name The name of the property.
+ * @param d The default value.
+ * @return The value or default if absent.
+ */
+def <T> T propertyOr(String name, Object d) {
+    Project curr = project
+    while (!curr.hasProperty(name)) {
+        curr = curr.parent
+        if (curr == null) {
+            return (T)d
+        }
+    }
+
+    return (T)curr.property(name)
+}
+
+/**
+ * Replaces the placeholders in the given
+ * string with the values in the map.
+ *
+ * @param s The input string.
+ * @param map The values.
+ * @return The translated string.
+ */
+String replacePlaceholders(String s, Map<String, Object> map) {
+    // output string builder
+    StringBuilder builder = new StringBuilder(s.length());
+
+    // for each character in the string
+    final int l = s.length()
+    int i = 0
+    char c;
+    while (i < l) {
+        c = s.charAt(i);
+
+        // check for literal
+        if (c == '\\' as char) {
+            builder.append(s.charAt(++i));
+            i++;
+            continue;
+        }
+
+        // check for placeholder
+        if (c == '%' as char && s.charAt(i + 1) == '{' as char) {
+            i += 2;
+
+            // collect spec
+            List<String> literals = new ArrayList<>();
+            StringBuilder literalBuilder = new StringBuilder();
+            StringBuilder nameBuilder = new StringBuilder();
+            while (i < l && s.charAt(i) != '}' as char) {
+                // check for literal
+                if (s.charAt(i) == '\'' as char) {
+                    i++
+
+                    while (i < l && s.charAt(i) != '\'' as char) {
+                        literalBuilder.append(s.charAt(i));
+                        i++;
+                    }
+
+                    i++;
+
+                    literals.add(literalBuilder.toString());
+                    literalBuilder.delete(0, literalBuilder.length());
+
+                    continue;
+                }
+
+                // collect name
+                nameBuilder.append(s.charAt(i));
+                i++;
+            }
+
+            i++;
+
+            // check for value
+            String name = nameBuilder.toString();
+            if (map.containsKey(name)) {
+                if (literals.size() > 0)
+                    builder.append(literals.get(0));
+                builder.append(map.get(name));
+                if (literals.size() > 1)
+                    builder.append(literals.get(1));
+            }
+
+            continue
+        }
+
+        // append to string
+        builder.append(c);
+        i++;
+    }
+
+    return builder.toString();
+}
+
+// check if this module requires minecraft (paperweight userdev)
+boolean hasPaper() {
+    return propertyOr("hasPaper", false)
+}
+
+// check if this module enables testing
+boolean hasTesting() {
+    return propertyOr("hasTesting", false)
+}
+
+// check if this module enables publishing
+boolean hasPublishing() {
+    return plugins.hasPlugin("maven-publish") && plugins.hasPlugin("signing")
+}
+
+// check if this module is an application
+boolean isApp() {
+    return propertyOr("isApplication", false)
+}
+
+// try to get a file in the root project folder
+File fileInRoot(String str) {
+    return new File(project.rootDir, str);
+}
+
+// try to get a path (file) in the root project folder
+Path pathInRoot(String str) {
+    return project.rootDir.toPath().resolve(str)
+}
+
+/* Properties */
+
+// set group to root project group
+group rootProject.group
+
+/* Minecraft Paperweight Configuration */
+
+if (hasPaper()) {
+    // set default
+    if (!project.hasProperty("paperVersion")) {
+        project.ext {
+            versionMC = propertyOr("paperVersion", propertyOr("defaultPaperVersion", null))
+        }
+    }
+
+    dependencies {
+        // Minecraft
+        paperweightDevelopmentBundle("io.papermc.paper:dev-bundle:" + propertyOr("paperVersion",
+                null))
+    }
+}
+
+/* Plugins */
+
+// apply java plugins
+apply plugin: 'java'
+apply plugin: 'java-library'
+
+// apply shadow
+apply plugin: 'com.github.johnrengelman.shadow'
+
+// apply userdev plugin
+if (hasPaper()) {
+    apply plugin: "io.papermc.paperweight.userdev"
+}
+
+/* Task Configuration */
+
+java {
+    // set language version
+    toolchain.languageVersion.set(JavaLanguageVersion.of(this.<Integer>propertyOr("languageVersion", 17)))
+}
+
+java {
+    /// include javadoc and sources
+    if (plugins.hasPlugin("java-library")) {
+        withJavadocJar()
+        withSourcesJar()
+    }
+}
+
+if (plugins.hasPlugin("java-library")) {
+    javadoc {
+        boolean verbose = false
+        if (project.hasProperty("jdVerbose"))
+            verbose = jdVerbose
+        options.outputLevel = verbose ? JavadocOutputLevel.VERBOSE : JavadocOutputLevel.QUIET
+        if (JavaVersion.current().isJava9Compatible()) {
+            options.addBooleanOption("html5", true)
+        }
+    }
+}
+
+// make sure publish depends
+// on build if publishing is enabled
+if (hasPublishing()) {
+    publish.dependsOn.add(tasks.jar)
+}
+
+// configure shadow
+assemble {
+    dependsOn(shadowJar) }
+
+// paperweight
+if (hasPaper()) {
+    assemble { dependsOn(shadowJar, reobfJar) }
+}
+
+compileJava {
+    options.encoding = propertyOr("encoding", "UTF-8")
+    options.release.set(propertyOr("releaseVersion", 17) as Integer) }
+javadoc {
+    options.encoding = propertyOr("encoding", "UTF-8") }
+processResources {
+    filteringCharset = propertyOr("encoding", "UTF-8") }
+
+// application
+jar {
+    if (isApp()) {
+        manifest {
+            attributes 'Main-Class': propertyOr("mainClassName", null)
+        }
+    }
+}
+
+File outFile
+String fileName
+String outDir
+tasks {
+    /* handle file name and build dir */
+    String fnFormat = propertyOr("outFileFormat", "%{name}-%{version}%{'+'paperVersion}.jar")
+    String odFormat = propertyOr("outDirFormat", "%{buildDir}/libs/"); // output dir format
+    Map<String, Object> values = new HashMap<>();
+
+    // put properties //
+
+    values.put("name", project.name)
+    values.put("version", project.version)
+    values.put("group", project.group)
+    values.put("buildDir", project.buildDir)
+
+    if (hasPaper())
+        values.put("paperVersion", propertyOr("paperVersion", null))
+
+    // set output file
+    fileName = replacePlaceholders(fnFormat, values);
+    outDir   = replacePlaceholders(odFormat, values);
+    outFile  = new File(outDir as String, fileName as String);
+    setOutputFile(outFile)
+}
+
+shadowJar {
+    archiveBaseName.set(fileName)
+    archiveClassifier.set('')
+    archiveVersion.set('')
+
+
+}
+
+if (hasPaper()) {
+    reobfJar {
+
+    }
+}
+
+/* General Dependencies */
+
+repositories {
+    mavenCentral()
+    mavenLocal()
+
+    // we are also publishing to this repo
+    maven { url = 'https://s01.oss.sonatype.org/content/repositories/releases/' }
+}
+
+dependencies {
+    // Test Dependencies
+    if (hasTesting()) {
+        testImplementation 'org.junit.jupiter:junit-jupiter-api:5.7.0'
+        testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine:5.7.0'
+    }
+}
+
+/* Test Configuration */
+
+if (hasTesting()) {
+    test {
+        // enable JUnit for testing
+        useJUnitPlatform()
+    }
+}
+
+
+/* Publishing */
+
+if (hasPublishing()) {
+
+    publishing {
+
+        publications {
+
+            mavenJava(MavenPublication) {
+
+                // publication properties
+                groupId = project.group
+                artifactId = project.name
+                version = project.version
+
+                // include java code
+                from components.java
+
+                pom {
+                    // pom.xml properties
+                    name = project.name
+
+                    String descStr = propertyOr("desc", null)
+                    description = rootProject.name + " Module " + project.name + (descStr != null ? " - " + descStr : "")
+
+                    url = propertyOr("projectUrl", "")
+                    inceptionYear = "" + new Date().getYear()
+
+                    // licensing
+                    licenses {
+                        String[] licenses = propertyOr("licenses", null);
+                        if (licenses != null) {
+                            for (String l : licenses) {
+                                String[] split = l.split(";")
+                                license {
+                                    name = split[0]
+                                    url  = split[1]
+                                }
+                            }
+                        }
+                    }
+
+                    // developers
+                    developers {
+                        String[] devs = propertyOr("developers", null);
+                        if (devs != null) {
+                            for (String dev : devs) {
+                                String[] split = dev.split(";")
+                                developer {
+                                    id = split[0]
+                                    name = split[1]
+                                    email = ""
+                                }
+                            }
+                        }
+                    }
+
+                    // SCM
+                    scm {
+                        String scmBaseUrl = propertyOr("scmBaseUrl", null)
+
+                        connection = "scm:git:git:" + scmBaseUrl
+                        developerConnection = "scm:git:ssh://" + scmBaseUrl
+                        url = "https://" + scmBaseUrl
+                    }
+
+                }
+
+            }
+
+        }
+
+        // publishing repositories
+        repositories {
+            // Maven Central
+            maven {
+                name = "OSSRH"
+                url = "https://s01.oss.sonatype.org/service/local/staging/deploy/maven2"
+                credentials {
+                    username = project.properties["ossrh.username"]
+                    password = project.properties["ossrh.password"]
+                }
+            }
+        }
+
+    }
+
+    // Publication Signing
+    signing {
+        sign publishing.publications.mavenJava
+    }
+
+}
+
+/* .gitignore Security */
+
+// checks if the given string c contains
+// the given line l, aka checks for l + newln
+// or l + EOF (endsWith)
+private boolean hasLine(String c, String l) {
+    return c.contains(l + "\n") || c.endsWith(l)
+}
+
+// ensures that secret files are
+// excluded by a .gitignore
+void ensureGitignoreSecurity(Path file) {
+    if (project.name != rootProject.name)
+        return
+    try {
+        // get current content
+        String content;
+        if (Files.exists(file)) {
+            InputStream i = Files.newInputStream(file)
+            content = new String(i.readAllBytes(), StandardCharsets.UTF_8)
+            i.close()
+        } else content = ""
+
+        // append to content
+        StringBuilder b = new StringBuilder(content);
+        b.append("\n### SECURITY ###\n")
+        if (!hasLine(content, "/gradle.properties"))
+            b.append("/gradle.properties\n")
+        if (!hasLine(content, "/secret-keys.gpg"))
+            b.append("/secret-keys.gpg\n")
+        content = b.toString()
+
+        // write back content
+        OutputStream out = Files.newOutputStream(file, StandardOpenOption.CREATE)
+        out.write(content.getBytes(StandardCharsets.UTF_8))
+        out.close()
+    } catch (Exception e) {
+        System.err.println("Failed to ensure .gitignore security on " + file)
+        e.printStackTrace()
+    }
+}
+
+if (project.hasProperty("autoSecureGitignore") && project.secureGitignore) {
+    // always do on reload
+    ensureGitignoreSecurity(pathInRoot(".gitignore"))
+}
+
+// create task
+task("secureGitignore") {
+    doLast {
+        ensureGitignoreSecurity(pathInRoot(".gitignore"))
+    }
+}
