@@ -10,6 +10,17 @@
  */
 
 /*
+    How to include:
+     1. Add cold-collective/buildsrc as a Git submodule
+     2. Add the line "include 'buildsrc'" to your settings.gradle
+        to avoid errors when loading the project.
+     Now for each module you want to use it for:
+     3. Load and apply whatever plugins you want to use.
+     4. Write `apply from: '<relative path to buildsrc/module.gradle>', to: project`
+        in the build.gradle of the module to apply the script.
+     5. Open an ext { } block **before** you apply the script and
+        configure your settings there.
+
     Documentation:
 
     1. Properties
