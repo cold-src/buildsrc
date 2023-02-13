@@ -154,7 +154,7 @@ def main(argv):
         print("please specify a subcommand")
         sys.exit(-1)
     if argv[1] == 'install':
-        install()
+        install(root_project_dir)
     elif argv[1] == 'new-module' or argv[1] == 'nm':
         new_module_wiz(root_project_dir, argv[2])
     else:
