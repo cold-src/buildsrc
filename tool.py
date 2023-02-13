@@ -77,11 +77,18 @@ def new_module_wiz(root_project_dir, name):
     print("wizard: create module " + name + " in project")
     props = ModuleProperties()
     cmd = "____"
-    while not cmd.isspace() and not cmd == 'exit':
+    while not cmd.isspace() and not cmd in [ 'exit', 'done', 'end', 'e', 'confirm' ]:
         # input command
         cmd = input("wizard new-module $ ")
 
-        # todo
+        # cancel
+        if cmd == 'cancel' or cmd == 'c':
+            print("new module create cancelled")
+            return
+
+        # split
+        splitCmd = cmd.split(" ")
+        if splitCmd[0] == ''
 
     # create subdirectory
     module_dir = os.path.join(root_project_dir, name)
