@@ -7,9 +7,6 @@
 import os
 import sys
 
-from libpy.util import *
-from libpy.args import *
-
 ## Find the root project directory
 ## which is the directory which contains settings.gradle
 def find_root_project_dir():
