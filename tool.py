@@ -55,7 +55,7 @@ def install(root_project_dir):
     # open settings.gradle
     settingsFile = os.path.join(root_project_dir, "settings.gradle")
     print("opened settings.gradle")
-    with open(settingsFile, 'r+') as f:
+    with open(settingsFile, 'r+w+') as f:
         content = f.read()
         f.seek(0, 0)
         content, modified = install_settings_gradle_content(content)
@@ -92,7 +92,8 @@ def new_module_wiz(root_project_dir, name):
     os.makedirs(module_dir, exist_ok=True)
     
     # create build.gradle
-    with open(os.path.join(module_dir, "build.gradle"), 'r+') as f:
+    buildFile = os.path.join(module_dir, "build.gradle")
+    with open(buildFile, 'r+w+') as f:
         print("creating build.gradle in module dir")
 
         # generate content #
@@ -134,7 +135,7 @@ plugins {
 
     # include in settings.gradle
     settingsFile = os.path.join(root_project_dir, "settings.gradle")
-    with open(settingsFile, 'r+') as f:
+    with open(settingsFile, 'r+w+') as f:
         content = f.read()
         
         content += "\ninclude '" + name + "'\n"
