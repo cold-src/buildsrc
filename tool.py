@@ -123,7 +123,7 @@ plugins {
             content += "\thasPaper = true\n"
         content += "}\n"
 
-        content += "\napply from: '" + os.path.relpath('.', module_dir) + "/module.gradle" + "', to: project\n"
+        content += "\napply from: '" + os.path.relpath(root_project_dir + "/buildsrc", module_dir) + "/module.gradle" + "', to: project\n"
 
         # write content to file
         f.write(content)
