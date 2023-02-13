@@ -163,4 +163,4 @@ def main(argv):
     print("done.")
 
 if __name__ == "__main__":
-    main()
+    main(sys.argv)
