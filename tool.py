@@ -88,7 +88,13 @@ def new_module_wiz(root_project_dir, name):
 
         # split
         splitCmd = cmd.split(" ")
-        if splitCmd[0] == ''
+        match splitCmd[0]:
+            case 'hasPaper', 'p':
+                print("new-module: hasPaper set")
+                props.has_paper = True
+            case 'version', 'v':
+                print("new-module: version = " + splitCmd[1])
+                props.version = splitCmd[1]
 
     # create subdirectory
     module_dir = os.path.join(root_project_dir, name)
