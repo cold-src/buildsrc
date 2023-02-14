@@ -55,7 +55,6 @@ def install(root_project_dir):
     with open(settingsFile, 'r+') as f:
         content = f.read()
         f.seek(0, 0)
-        print(content)
         content, modified = install_settings_gradle_content(content)
         if modified:
             f.write(content)
@@ -110,8 +109,6 @@ def new_module_wiz(root_project_dir, name):
         # generate content #
         content = ""
         content += """
-/* Init by new-module, buildsrc/tool.py */
-
 plugins {
     // java
     id 'java'
@@ -126,18 +123,18 @@ plugins {
 """ # general plugins
         
         if props.has_paper:
-            content += "\n\n\tid ('io.papermc.paperweight.userdev') version '1.3.5'"
+            content += "\n\n\tid ('io.papermc.paperweight.userdev') version '1.3.5'\n"
 
-        content += "\n}\n" # close plugins
+        content += "}\n" # close plugins
 
-        content += "version '" + props.version + "'\n"
+        content += "\nversion '" + props.version + "'\n"
 
-        content += "\next {\n"
+        content += "\n/* module properties/configuration */\next {\n"
         if props.has_paper:
             content += "\thasPaper = true\n"
         content += "\n}\n"
 
-        content += "\napply from: '" + os.path.relpath(root_project_dir + "/buildsrc", module_dir) + "/module.gradle" + "', to: project\n"
+        content += "\n/* apply buildsrc script */ \napply from: '" + os.path.relpath(root_project_dir + "/buildsrc", module_dir) + "/module.gradle" + "', to: project\n"
 
         # write content to file
         f.write(content)
@@ -151,6 +148,7 @@ plugins {
         
         content += "\ninclude '" + name + "'\n"
 
+        f.seek(0, 0)
         f.write(content)
         print("modified settings.gradle to include module")
     
