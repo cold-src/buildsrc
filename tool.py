@@ -108,8 +108,7 @@ def new_module_wiz(root_project_dir, name):
 
         # generate content #
         content = ""
-        content += """
-plugins {
+        content += """plugins {
     // java
     id 'java'
     id 'java-library'
@@ -127,14 +126,14 @@ plugins {
 
         content += "}\n" # close plugins
 
-        content += "\nversion '" + props.version + "'\n"
+        content += "\n/* artifact properties */\nversion '" + props.version + "'\n"
 
         content += "\n/* module properties/configuration */\next {\n"
         if props.has_paper:
             content += "\thasPaper = true\n"
         content += "\n}\n"
 
-        content += "\n/* apply buildsrc script */ \napply from: '" + os.path.relpath(root_project_dir + "/buildsrc", module_dir) + "/module.gradle" + "', to: project\n"
+        content += "\n/* apply buildsrc script */ \napply from: '" + os.path.relpath(root_project_dir + "/buildsrc", module_dir).replace("\\", "/") + "/module.gradle" + "', to: project\n"
 
         # write content to file
         f.write(content)
