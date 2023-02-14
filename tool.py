@@ -55,6 +55,7 @@ def install(root_project_dir):
     with open(settingsFile, 'a+') as f:
         content = f.read()
         f.seek(0, 0)
+        print(content)
         content, modified = install_settings_gradle_content(content)
         if modified:
             f.write(content)
