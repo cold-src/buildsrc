@@ -52,7 +52,7 @@ def install(root_project_dir):
     # open settings.gradle
     settingsFile = os.path.join(root_project_dir, "settings.gradle")
     print("opened settings.gradle")
-    with open(settingsFile, 'rw') as f:
+    with open(settingsFile, 'r+') as f:
         content = f.read()
         f.seek(0, 0)
         print(content)
@@ -146,7 +146,7 @@ plugins {
 
     # include in settings.gradle
     settingsFile = os.path.join(root_project_dir, "settings.gradle")
-    with open(settingsFile, 'rw') as f:
+    with open(settingsFile, 'r+') as f:
         content = f.read()
         
         content += "\ninclude '" + name + "'\n"
