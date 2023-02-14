@@ -52,7 +52,7 @@ def install(root_project_dir):
     # open settings.gradle
     settingsFile = os.path.join(root_project_dir, "settings.gradle")
     print("opened settings.gradle")
-    with open(settingsFile, 'a+') as f:
+    with open(settingsFile, 'rw') as f:
         content = f.read()
         f.seek(0, 0)
         print(content)
@@ -135,7 +135,7 @@ plugins {
         content += "\next {\n"
         if props.has_paper:
             content += "\thasPaper = true\n"
-        content += "}\n"
+        content += "\n}\n"
 
         content += "\napply from: '" + os.path.relpath(root_project_dir + "/buildsrc", module_dir) + "/module.gradle" + "', to: project\n"
 
@@ -146,7 +146,7 @@ plugins {
 
     # include in settings.gradle
     settingsFile = os.path.join(root_project_dir, "settings.gradle")
-    with open(settingsFile, 'a+') as f:
+    with open(settingsFile, 'rw') as f:
         content = f.read()
         
         content += "\ninclude '" + name + "'\n"
