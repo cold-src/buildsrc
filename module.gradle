@@ -64,10 +64,14 @@
     # Output File
     - outFileFormat:
        The format for the output file name.
-       Default: %{name}-%{version}%{'+'paperVersion}.jar
+       NOTE: Exclude the extension from this string
+       Default: %{name}-%{version}%{'+'paperVersion}
     - outDirFormat:
        The format for the output directory name.
        Default: %{buildDir}/libs/
+    - shadowJarClassifier:
+       The classifier for shadow JARs.
+       Default: all
     # Publishing
     - projectUrl:
        The URL to your project.
@@ -353,7 +357,7 @@ String fileName
 String outDir
 tasks {
     /* handle file name and build dir */
-    String fnFormat = propertyOr("outFileFormat", "%{name}-%{version}%{'+'paperVersion}.jar")
+    String fnFormat = propertyOr("outFileFormat", "%{name}-%{version}%{'+'paperVersion}")
     String odFormat = propertyOr("outDirFormat", "%{buildDir}/libs/"); // output dir format
     Map<String, Object> values = new HashMap<>();
 
@@ -370,13 +374,13 @@ tasks {
     // set output file
     fileName = replacePlaceholders(fnFormat, values);
     outDir   = replacePlaceholders(odFormat, values);
-    outFile  = new File(outDir as String, fileName as String);
+    outFile  = new File(outDir as String, fileName + ".jar" as String);
     setOutputFile(outFile)
 }
 
 shadowJar {
     archiveBaseName.set(fileName)
-    archiveClassifier.set('')
+    archiveClassifier.set(propertyOr("shadowJarClassifier", "all"))
     archiveVersion.set('')
 
 
